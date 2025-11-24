@@ -7,6 +7,11 @@ import axios from "axios";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { spawn } from "child_process";
+import path from "path";
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 
 dotenv.config();
 const app = express();
@@ -24,7 +29,7 @@ app.use(express.json());
 
 function runPythonRecommend(genre, platform, topK = 20, alpha = 0.8) {
   return new Promise((resolve, reject) => {
-    const py = spawn("python", ["scripts/recommend_api.py"], {
+    const py = spawn("python3", [path.join(__dirname, "scripts", "recommend_api.py")], {
       stdio: ["pipe", "pipe", "pipe"],
     });
     const payload = JSON.stringify({ genre, platform, topK, alpha });
@@ -611,6 +616,6 @@ app.post("/admin/reject-game/:id", verifyToken, verifyAdmin, async (req, res) =>
 });
 
 // Start server
-app.listen(port, "localhost", () => {
+app.listen(port, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${port}`);
 });
