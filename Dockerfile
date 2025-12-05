@@ -1,29 +1,20 @@
-# 1️⃣ Base Image
 FROM node:18
 
-# 2️⃣ Install Python
-RUN apt-get update && apt-get install -y python3 python3-pip
+# Install Python + system libs needed for numpy/scipy
+RUN apt-get update && apt-get install -y \
+    python3 python3-pip python3-dev \
+    build-essential gfortran libatlas-base-dev
 
-# 3️⃣ Set working directory
 WORKDIR /app
 
-# 4️⃣ Copy Node dependencies
 COPY package*.json ./
-
-# 5️⃣ Install Node packages
 RUN npm install
 
-# 6️⃣ Copy Python dependencies
-COPY requirements.txt .
+COPY requirements.txt ./
+RUN pip3 install --no-cache-dir -r requirements.txt
 
-# 7️⃣ Install Python packages
-RUN pip3 install -r requirements.txt
-
-# 8️⃣ Copy all project files
 COPY . .
 
-# 9️⃣ Expose backend port
 EXPOSE 5000
 
-# 🔟 Start backend
 CMD ["npm", "start"]
