@@ -1,2 +1,19 @@
+# Environment variables
 .env
+
+# Node dependencies
 node_modules/
+
+# Build output (for Vite/React/Netlify)
+dist/
+build/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
