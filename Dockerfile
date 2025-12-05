@@ -7,14 +7,19 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
+# Install Node dependencies
 COPY package*.json ./
 RUN npm install
 
+# Install Python dependencies (fix PEP 668)
 COPY requirements.txt ./
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN pip3 install --break-system-packages --no-cache-dir -r requirements.txt
 
+# Copy the rest of the backend files
 COPY . .
 
+# Expose backend port
 EXPOSE 5000
 
+# Start the Node backend
 CMD ["npm", "start"]
