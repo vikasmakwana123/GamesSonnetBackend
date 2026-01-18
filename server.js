@@ -21,8 +21,8 @@ const port = process.env.PORT || 3000;
 
 app.use(cors({
   origin: "*", // Allow all origins for testing
-  methods: ["GET","POST","PUT","DELETE"],
-  allowedHeaders: ["Content-Type","Authorization"],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"],
 }));
 app.use(bodyParser.json());
 app.use(express.json());
@@ -185,10 +185,10 @@ app.post("/login", async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    res.json({ 
-      message: "Login successful", 
-      token, 
-      user: { username: user.username, email: user.email, isAdmin } 
+    res.json({
+      message: "Login successful",
+      token,
+      user: { username: user.username, email: user.email, isAdmin }
     });
   } catch (err) {
     res.status(500).json({ error: "Login failed" });
@@ -240,12 +240,22 @@ app.post("/save-game", verifyToken, async (req, res) => {
     const existingPendingGame = await PendingGame.findOne({ id, status: 'pending' });
 
     if (existingGame) {
+
+      // 🔥 FORCE addedBy to be an array
+      if (!Array.isArray(existingGame.addedBy)) {
+        existingGame.addedBy = [existingGame.addedBy];
+      }
+
       if (!existingGame.addedBy.includes(req.user.username)) {
         existingGame.addedBy.push(req.user.username);
         await existingGame.save();
       }
-      return res.status(200).json({ message: "Game already exists. Your username added as contributor." });
+
+      return res.status(200).json({
+        message: "Game already exists. Your username added as contributor."
+      });
     }
+
 
     if (existingPendingGame) {
       return res.status(200).json({ message: "Game is already pending admin approval." });
@@ -261,7 +271,7 @@ app.post("/save-game", verifyToken, async (req, res) => {
       platforms,
       rating,
       released,
-      submittedBy: req.user.username,
+      submittedBy: [req.user.username],
       website,
     });
 
@@ -277,6 +287,8 @@ app.post("/save-game", verifyToken, async (req, res) => {
 app.get("/suggested-games", async (req, res) => {
   try {
     const games = await Game.find().sort({ addedAt: -1 });
+    console.log("Suggested games fetched:", games.length);
+    console.log("Suggested games sent to client", games[1, 3]);
     res.json(games);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch games" });
@@ -287,10 +299,10 @@ app.get("/suggested-games", async (req, res) => {
 app.get("/leaderboard", async (req, res) => {
   try {
     const games = await Game.find();
-    
+
     // Count games per user
     const userCounts = {};
-    
+
     games.forEach(game => {
       if (game.addedBy && Array.isArray(game.addedBy)) {
         game.addedBy.forEach(username => {
@@ -300,13 +312,13 @@ app.get("/leaderboard", async (req, res) => {
         });
       }
     });
-    
+
     // Convert to array and sort by count (descending)
     const leaderboard = Object.entries(userCounts)
       .map(([username, count]) => ({ username, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 20); // Top 20
-    
+
     res.status(200).json(leaderboard);
   } catch (error) {
     console.error("Leaderboard error:", error);
@@ -320,6 +332,7 @@ async function fetchGameDetailsFromBackend(slug) {
     const response = await axios.get(`https://api.rawg.io/api/games/${slug}`, {
       params: { key: process.env.RAWG_API_KEY }
     });
+    console.log("Fetched game details from RAWG for slug:", slug);
     return response.data;
   } catch (err) {
     return err;
@@ -333,9 +346,11 @@ app.post("/addyours", verifyToken, verifyAdmin, async (req, res) => {
 
   try {
     const gameData = await fetchGameDetailsFromBackend(gamename);
+    console.log("Fetched game data from RAWG:", gameData);
     if (!gameData) return res.status(500).json({ error: "Failed to fetch game" });
 
     let existingGame = await Game.findOne({ id: gameData.id });
+
 
     if (existingGame) {
       if (!existingGame.addedBy.includes(req.user.username)) {
@@ -509,7 +524,7 @@ app.get("/yoursuggested", verifyToken, async (req, res) => {
   try {
     const games = await Game.find({ addedBy: req.user.username }).sort({ addedAt: -1 });
     res.status(200).json(games);
-    
+
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch your suggested games" });
     console.error(err);
@@ -522,16 +537,16 @@ app.post("/make-admin", verifyToken, async (req, res) => {
   if (process.env.NODE_ENV === 'production') {
     return res.status(403).json({ error: "Not available in production" });
   }
-  
+
   try {
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-    
+
     user.isAdmin = true;
     await user.save();
-    
+
     res.status(200).json({ message: "User is now an admin (DEVELOPMENT ONLY)" });
   } catch (err) {
     res.status(500).json({ error: "Failed to make user admin" });
@@ -576,7 +591,9 @@ app.post("/admin/approve-game/:id", verifyToken, verifyAdmin, async (req, res) =
       platforms: pendingGame.platforms,
       rating: pendingGame.rating,
       released: pendingGame.released,
-      addedBy: pendingGame.submittedBy,
+      addedBy: Array.isArray(pendingGame.submittedBy)
+        ? pendingGame.submittedBy
+        : [pendingGame.submittedBy],
       addedAt: new Date(),
       website: pendingGame.website,
     });
@@ -597,7 +614,7 @@ app.post("/admin/approve-game/:id", verifyToken, verifyAdmin, async (req, res) =
 // Admin: Reject a pending game
 app.post("/admin/reject-game/:id", verifyToken, verifyAdmin, async (req, res) => {
   const { adminNotes } = req.body;
-  
+
   try {
     const pendingGame = await PendingGame.findById(req.params.id);
     if (!pendingGame) {
