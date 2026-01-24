@@ -29,7 +29,7 @@ app.use(express.json());
 
 function runPythonRecommend(genre, platform, topK = 20, alpha = 0.8) {
   return new Promise((resolve, reject) => {
-    const py = spawn("python3", [path.join(__dirname, "scripts", "recommend_api.py")], {
+    const py = spawn("python", [path.join(__dirname, "scripts", "recommend_api.py")], {
       stdio: ["pipe", "pipe", "pipe"],
     });
     const payload = JSON.stringify({ genre, platform, topK, alpha });
@@ -288,7 +288,7 @@ app.get("/suggested-games", async (req, res) => {
   try {
     const games = await Game.find().sort({ addedAt: -1 });
     console.log("Suggested games fetched:", games.length);
-    console.log("Suggested games sent to client", games[1, 3]);
+    
     res.json(games);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch games" });
@@ -480,6 +480,7 @@ app.post("/add-review", verifyToken, async (req, res) => {
     return res.status(400).json({ error: "Game ID, review text, and rating are required" });
 
   try {
+    console.log(req.body)
     const review = new Review({
       gameId,
       username: req.user.username,
