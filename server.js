@@ -36,6 +36,11 @@ function runPythonRecommend(genre, platform, topK = 20, alpha = 0.8) {
     let data = "";
     let err = "";
 
+    // Handle spawn errors (e.g., python3 not found)
+    py.on("error", (error) => {
+      reject(new Error(`Failed to spawn Python: ${error.message}`));
+    });
+
     py.stdout.on("data", (chunk) => (data += chunk.toString()));
     py.stderr.on("data", (chunk) => (err += chunk.toString()));
     py.on("close", (code) => {
@@ -277,6 +282,8 @@ app.post("/save-game", verifyToken, async (req, res) => {
 app.get("/suggested-games", async (req, res) => {
   try {
     const games = await Game.find().sort({ addedAt: -1 });
+    console.log("Suggested games fetched:", games.length);
+    console.log("Suggested games sent to client",games[1,3]);
     res.json(games);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch games" });
@@ -320,6 +327,7 @@ async function fetchGameDetailsFromBackend(slug) {
     const response = await axios.get(`https://api.rawg.io/api/games/${slug}`, {
       params: { key: process.env.RAWG_API_KEY }
     });
+    console.log("Fetched game details from RAWG for slug:", slug);
     return response.data;
   } catch (err) {
     return err;
@@ -333,9 +341,11 @@ app.post("/addyours", verifyToken, verifyAdmin, async (req, res) => {
 
   try {
     const gameData = await fetchGameDetailsFromBackend(gamename);
+    console.log("Fetched game data from RAWG:", gameData);
     if (!gameData) return res.status(500).json({ error: "Failed to fetch game" });
 
     let existingGame = await Game.findOne({ id: gameData.id });
+
 
     if (existingGame) {
       if (!existingGame.addedBy.includes(req.user.username)) {
