@@ -29,7 +29,7 @@ app.use(express.json());
 
 function runPythonRecommend(genre, platform, topK = 20, alpha = 0.8) {
   return new Promise((resolve, reject) => {
-    const py = spawn("python3", [path.join(__dirname, "scripts", "recommend_api.py")], {
+    const py = spawn("python", [path.join(__dirname, "scripts", "recommend_api.py")], {
       stdio: ["pipe", "pipe", "pipe"],
     });
     const payload = JSON.stringify({ genre, platform, topK, alpha });
@@ -54,7 +54,7 @@ function runPythonRecommend(genre, platform, topK = 20, alpha = 0.8) {
 
 function runPersonalizedRecommend(likedGameIds, topK = 15) {
   return new Promise((resolve, reject) => {
-    const py = spawn("python3", [path.join(__dirname, "scripts", "recommend_personalized.py")], {
+    const py = spawn("python", [path.join(__dirname, "scripts", "recommend_personalized.py")], {
       stdio: ["pipe", "pipe", "pipe"],
     });
     const payload = JSON.stringify({ likedGameIds, topK });
@@ -92,6 +92,7 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, unique: true },
   password: String,
   isAdmin: { type: Boolean, default: false },
+  likedGames: { type: Array, default: [] },
 });
 
 const GameSchema = new mongoose.Schema({
@@ -203,6 +204,37 @@ app.post("/api/personalized-recommend", async (req, res) => {
     res.json(results);
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+// Update User Preferences
+app.post("/api/user-preferences", verifyToken, async (req, res) => {
+  const { gameData } = req.body;
+  if (!gameData || !gameData.id) return res.status(400).json({ error: "Game data is required" });
+
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const gameExists = user.likedGames.some((g) => g.id === gameData.id || g.name === gameData.name);
+    if (!gameExists) {
+      user.likedGames.push(gameData);
+      await user.save();
+    }
+    res.status(200).json({ message: "Preference updated successfully", likedGames: user.likedGames });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update preferences" });
+  }
+});
+
+// Get User Preferences
+app.get("/api/user-preferences", verifyToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: "User not found" });
+    res.status(200).json({ likedGames: user.likedGames });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch preferences" });
   }
 });
 

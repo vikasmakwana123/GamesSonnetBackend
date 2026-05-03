@@ -17,12 +17,11 @@ def recommend_by_preferences(liked_game_ids, top_k=15):
     try:
         df = pd.read_csv(INDEX_CSV)
         
-        # Filter liked games from the database
-        liked_games = df[df['id'].isin(liked_game_ids)].copy()
+        # Convert liked_game_ids to strings for name matching
+        liked_names = [str(g).lower() for g in liked_game_ids]
         
-        if liked_games.empty:
-            # If no exact matches, try by game name
-            liked_games = df[df['name'].isin(liked_game_ids)].copy()
+        # Match by game name (case-insensitive)
+        liked_games = df[df['name'].str.lower().isin(liked_names)].copy()
         
         if liked_games.empty:
             return []

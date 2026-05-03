@@ -2,7 +2,7 @@ FROM node:18
 
 # Install Python + system libs needed for numpy/scipy
 RUN apt-get update && apt-get install -y \
-    python3 python3-pip python3-dev \
+    python3 python3-pip python3-dev python-is-python3 \
     build-essential gfortran libatlas-base-dev
 
 WORKDIR /app
