@@ -29,7 +29,7 @@ app.use(express.json());
 
 function runPythonRecommend(genre, platform, topK = 20, alpha = 0.8) {
   return new Promise((resolve, reject) => {
-    const py = spawn("python", [path.join(__dirname, "scripts", "recommend_api.py")], {
+    const py = spawn("python3", [path.join(__dirname, "scripts", "recommend_api.py")], {
       stdio: ["pipe", "pipe", "pipe"],
     });
     const payload = JSON.stringify({ genre, platform, topK, alpha });
