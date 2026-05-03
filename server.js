@@ -52,6 +52,30 @@ function runPythonRecommend(genre, platform, topK = 20, alpha = 0.8) {
   });
 }
 
+function runPersonalizedRecommend(likedGameIds, topK = 15) {
+  return new Promise((resolve, reject) => {
+    const py = spawn("python3", [path.join(__dirname, "scripts", "recommend_personalized.py")], {
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    const payload = JSON.stringify({ likedGameIds, topK });
+    let data = "";
+    let err = "";
+
+    py.on("error", (error) => {
+      reject(new Error(`Failed to spawn Python: ${error.message}`));
+    });
+
+    py.stdout.on("data", (chunk) => (data += chunk.toString()));
+    py.stderr.on("data", (chunk) => (err += chunk.toString()));
+    py.on("close", (code) => {
+      if (code !== 0) return reject(new Error(err || "Python error"));
+      try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
+    });
+    py.stdin.write(payload);
+    py.stdin.end();
+  });
+}
+
 
 
 // MongoDB Connection
@@ -167,6 +191,21 @@ app.post("/api/recommend", async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// Personalized Recommendations based on user preferences
+app.post("/api/personalized-recommend", async (req, res) => {
+  try {
+    const { likedGameIds, topK } = req.body;
+    if (!likedGameIds || !Array.isArray(likedGameIds) || likedGameIds.length === 0) {
+      return res.status(400).json({ error: "likedGameIds array is required" });
+    }
+    const results = await runPersonalizedRecommend(likedGameIds, topK || 15);
+    res.json(results);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Login
 app.post("/login", async (req, res) => {
   const { usernameOrEmail, password } = req.body;
